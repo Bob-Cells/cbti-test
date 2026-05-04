@@ -1,7 +1,7 @@
 name: Build Static CBTI Site
 
 on:
-  workflow_dispatch:  # 允许你手动触发构建
+  workflow_dispatch:  # 允许手动触发构建
 
 jobs:
   build:
@@ -17,11 +17,57 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Patch next.config.ts for static export
+        run: |
+          CONFIG_FILE="next.config.ts"
+          if [ ! -f "$CONFIG_FILE" ]; then
+            echo "❌ 错误：找不到 $CONFIG_FILE 文件！"
+            exit 1
+          fi
+          # 使用 Node.js 脚本安全地修改 TypeScript 配置文件
+          node -e "
+          const fs = require('fs');
+          let config = fs.readFileSync('$CONFIG_FILE', 'utf8');
+
+          // 确保 output: 'export' 存在
+          if (!config.includes('output:')) {
+            config = config.replace(
+              /(const nextConfig[^=]*=\s*\{)/,
+              '\$1\n  output: \"export\",'
+            );
+          } else {
+            config = config.replace(
+              /output:\s*['\"]?[^'\",}]*['\"]?/,
+              'output: \"export\"'
+            );
+          }
+
+          // 确保 images: { unoptimized: true } 存在
+          if (!config.includes('images:')) {
+            config = config.replace(
+              /(const nextConfig[^=]*=\s*\{)/,
+              '\$1\n  images: {\n    unoptimized: true,\n  },'
+            );
+          } else {
+            // 已有 images 配置时，确保 unoptimized: true 在里面
+            config = config.replace(
+              /(images:\s*\{)/,
+              '\$1\n    unoptimized: true,'
+            );
+          }
+
+          console.log('修改后的 next.config.ts 内容：');
+          console.log(config);
+          fs.writeFileSync('$CONFIG_FILE', config);
+          "
+
       - name: Build static files
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         run: npm run build
 
       - name: Upload static site artifact
         uses: actions/upload-artifact@v4
         with:
           name: cbti-static
-          path: out   # 构建完成后静态文件在这个目录
+          path: out
