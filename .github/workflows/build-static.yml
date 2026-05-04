@@ -12,7 +12,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20   # ✅ 这里改成了 20，满足 Next.js 的最低要求
 
       - name: Install dependencies
         run: npm install
@@ -24,7 +24,6 @@ jobs:
             echo "❌ 错误：找不到 $CONFIG_FILE 文件！"
             exit 1
           fi
-          # 使用 Node.js 脚本安全地修改 TypeScript 配置文件
           node -e "
           const fs = require('fs');
           let config = fs.readFileSync('$CONFIG_FILE', 'utf8');
@@ -49,7 +48,6 @@ jobs:
               '\$1\n  images: {\n    unoptimized: true,\n  },'
             );
           } else {
-            // 已有 images 配置时，确保 unoptimized: true 在里面
             config = config.replace(
               /(images:\s*\{)/,
               '\$1\n    unoptimized: true,'
