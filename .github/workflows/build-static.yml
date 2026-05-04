@@ -1,0 +1,27 @@
+name: Build Static CBTI Site
+
+on:
+  workflow_dispatch:  # 允许你手动触发构建
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build static files
+        run: npm run build
+
+      - name: Upload static site artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cbti-static
+          path: out   # 构建完成后静态文件在这个目录
