@@ -12,7 +12,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20   # ✅ 这里改成了 20，满足 Next.js 的最低要求
+          node-version: 20
 
       - name: Install dependencies
         run: npm install
@@ -28,30 +28,27 @@ jobs:
           const fs = require('fs');
           let config = fs.readFileSync('$CONFIG_FILE', 'utf8');
 
-          // 确保 output: 'export' 存在
-          if (!config.includes('output:')) {
-            config = config.replace(
-              /(const nextConfig[^=]*=\s*\{)/,
-              '\$1\n  output: \"export\",'
-            );
-          } else {
-            config = config.replace(
-              /output:\s*['\"]?[^'\",}]*['\"]?/,
-              'output: \"export\"'
-            );
+          // 1. 确保 output: 'export' 存在（不重复添加）
+          if (!/output\s*:\s*['\"]export['\"]/.test(config)) {
+            // 如果已经有 output 属性但值不是 export，则替换；否则在 nextConfig 开头插入
+            if (/output\s*:/.test(config)) {
+              config = config.replace(/output\s*:\s*['\"]?[^'\",}]*['\"]?/, 'output: \"export\"');
+            } else {
+              config = config.replace(/(const nextConfig[^=]*=\s*\{)/, '\$1\n  output: \"export\",');
+            }
           }
 
-          // 确保 images: { unoptimized: true } 存在
-          if (!config.includes('images:')) {
-            config = config.replace(
-              /(const nextConfig[^=]*=\s*\{)/,
-              '\$1\n  images: {\n    unoptimized: true,\n  },'
-            );
+          // 2. 确保 images: { unoptimized: true } 存在，且不重复
+          if (!/images\s*:/.test(config)) {
+            // 完全没有 images 配置，直接插入
+            config = config.replace(/(const nextConfig[^=]*=\s*\{)/, '\$1\n  images: {\n    unoptimized: true,\n  },');
           } else {
-            config = config.replace(
-              /(images:\s*\{)/,
-              '\$1\n    unoptimized: true,'
-            );
+            // 已有 images 对象，检查是否已有 unoptimized 属性
+            if (!/unoptimized\s*:/.test(config.match(/images\s*:\s*\{[^}]*\}/s)?.[0] || '')) {
+              // 没有 unoptimized，则在 images 对象内添加
+              config = config.replace(/(images\s*:\s*\{)/, '\$1\n    unoptimized: true,');
+            }
+            // 如果已经有了 unoptimized，不做任何修改
           }
 
           console.log('修改后的 next.config.ts 内容：');
